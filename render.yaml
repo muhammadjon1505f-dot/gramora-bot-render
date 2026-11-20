@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: gramora-bot
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: TG_API_ID
+        value: "38883376"
+      - key: TG_API_HASH
+        value: "67909afdf0fe6c23e6af29985f645297"
+      - key: TELEGRAM_BOT_TOKEN
+        value: "8604188989:AAG9x-GExIsE1-9t4_MLfV2xQ6VZkc3kTMg"
+      - key: TG_SESSION_STRING
+        sync: false
+      - key: TZ
+        value: "Asia/Tashkent"

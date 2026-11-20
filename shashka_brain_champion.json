@@ -1,0 +1,42 @@
+{
+  "name": "Champion-v1.0",
+  "generation": 1,
+  "elo": 2500,
+  "weights": [
+    1000,
+    4100,
+    140,
+    115,
+    1800,
+    880,
+    48,
+    320,
+    190,
+    85,
+    270,
+    240,
+    150,
+    600,
+    400,
+    460,
+    500,
+    600,
+    600,
+    34,
+    980,
+    450,
+    220,
+    105
+  ],
+  "created_at": "2026-11-12 14:50:21",
+  "matches_won": 0,
+  "matches_played": 0,
+  "evolution_history": [
+    {
+      "generation": 1,
+      "elo": 2500,
+      "note": "Initial Grandmaster Baseline",
+      "timestamp": "2026-11-12 14:50:21"
+    }
+  ]
+}
