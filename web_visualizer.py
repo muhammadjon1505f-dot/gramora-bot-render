@@ -1344,11 +1344,11 @@ def create_web_app(game_bot):
         try:
             log_file = "/tmp/runner.log"
             if not os.path.exists(log_file):
-                return web.Response(text="No logs found yet.", content_type="text/plain; charset=utf-8")
+                return web.Response(text="No logs found yet.", content_type="text/plain", charset="utf-8")
             with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
                 lines = f.readlines()
             tail = "".join(lines[-250:])
-            return web.Response(text=tail, content_type="text/plain; charset=utf-8")
+            return web.Response(text=tail, content_type="text/plain", charset="utf-8")
         except Exception as e:
             return web.Response(text=f"Log read error: {e}", status=500)
 
