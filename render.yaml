@@ -6,6 +6,7 @@ services:
     region: frankfurt
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
+    autoDeploy: true
     envVars:
       - key: PORT
         value: 10000
@@ -18,6 +19,6 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         value: "8604188989:AAG9x-GExIsE1-9t4_MLfV2xQ6VZkc3kTMg"
       - key: TG_SESSION_STRING
-        sync: false
+        value: "1ApWapzMBu5qOuQNAabWD_M5xV7uA0mZggqEvCBP201NVH55THZQICsA1yOgIDfBPz41TZlWnGvkOi3iiVN-zi4Gq2wNtrKpZIDEVqntJqvGbOegIpVvBEyeEKDE1SDbToFgSDm2tyvV6iH-MeaupEC9V5QpesjiOm_X8EbSqta21dCHZyABwoEDrmS-EqOfAu9DpgNWte7fAnjUpIbNa7Gzgayid8KHOaC56wvHTqXq4qX3flG3DS4iS29wjmK7xvVzlJkrBHDxNmcoDNYxLgeaXuIfdmSg0BQZCNX_FN0vpA8MCNo0yst_xZLV_1SnWU8v2YvJnpuoVXmL_Si-ITikdtQW4Wvg="
       - key: TZ
         value: "Asia/Tashkent"

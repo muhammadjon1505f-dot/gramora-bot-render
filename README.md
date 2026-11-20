@@ -1,5 +1,7 @@
 # 👑 GRAMORA SHASHKA GRANDMASTER AI — RENDER.COM DEPLOY 🚀
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/muhammadjon1505f-dot/gramora-bot-render)
+
 Ushbu repozitoriy **Gramora Shashka Bot** (GodMode v50 C-Native Engine + 24/7 Telethon Avtopilot + Jonli Web App Doskasi + @Suvbelgi_bot Boshqaruv Paneli) ni **Render.com** bulutli platformasiga 24/7 rejimda bepul joylashtirish (deploy) uchun to'liq optimallashtirilgan.
 
 ---
@@ -15,37 +17,12 @@ Ushbu repozitoriy **Gramora Shashka Bot** (GodMode v50 C-Native Engine + 24/7 Te
 
 ---
 
-## 🚀 RENDER.COM GA JOYLASHTIRISH (QADAMMA-QADAM)
+## 🚀 1-KLIK BILAN RENDERGA JOYLASHTIRISH:
 
-### 1-Usul: Docker Web Service (TAVSIYA ETILADI — Eng oson va barqaror)
+Quyidagi havolani bosing:  
+👉 **[RENDERGA 1-BOSISHDA JOYLASHTIRISH (DEPLOY TO RENDER)](https://render.com/deploy?repo=https://github.com/muhammadjon1505f-dot/gramora-bot-render)**
 
-1. [render.com](https://render.com) saytiga kiring va kiring (Sign in via GitHub).
-2. Asosiy sahifada **New +** tugmasini bosing va **Web Service** ni tanlang.
-3. **Build and deploy from a Git repository** ni tanlab, **`gramora-bot-render`** repozitoriyingizni ulang (`Connect`).
-4. Quyidagi parametrlarni kiriting:
-   - **Name:** `gramora-bot` (yoki ixtiyoriy nom)
-   - **Region:** `Frankfurt (EU Central)` yoki `Oregon (US West)`
-   - **Language / Runtime:** `Docker`
-   - **Instance Type:** `Free` (bepul)
-5. **Environment Variables** (Muhit o'zgaruvchilari) bo'limiga kiring va quyidagilarni qo'shing:
-   - `TG_SESSION_STRING` = `.env.example` dagi tayyor string session kodi
-   - `TELEGRAM_BOT_TOKEN` = `8604188989:AAG9x-GExIsE1-9t4_MLfV2xQ6VZkc3kTMg`
-   - `TG_API_ID` = `38883376`
-   - `TG_API_HASH` = `67909afdf0fe6c23e6af29985f645297`
-   - `PORT` = `10000`
-   - `HOST` = `0.0.0.0`
-   - `TZ` = `Asia/Tashkent`
-6. Pastdagi **Deploy Web Service** tugmasini bosing!
-7. Render avtomatik ravishda Docker konteynerini yig'adi, C dvigatelni kompilyatsiya qiladi va botni ishga tushiradi!
-
----
-
-### 2-Usul: Python Native Environment (Docker ishlatmasdan)
-
-Agar Docker o'rniga Python muhitini tanlasangiz:
-- **Build Command:** `bash build.sh`
-- **Start Command:** `bash start.sh`
-- **Health Check Path:** `/healthz`
+Barcha sozlamalar (`TG_SESSION_STRING`, `BOT_TOKEN`, `PORT`) `render.yaml` orqali **avtomatik to'ldirilgan**. Sizdan faqat **Apply** tugmasini bosish talab qilinadi!
 
 ---
 
