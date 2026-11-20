@@ -1,52 +1,41 @@
-# 👑 GRAMORA SHASHKA GRANDMASTER AI — RENDER.COM DEPLOY 🚀
+# 👑 GRAMORA + ⭐️ UZB STARS BUY — RENDER.COM MULTI-BOT 🚀
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/muhammadjon1505f-dot/gramora-bot-render)
 
-Ushbu repozitoriy **Gramora Shashka Bot** (GodMode v50 C-Native Engine + 24/7 Telethon Avtopilot + Jonli Web App Doskasi + @Suvbelgi_bot Boshqaruv Paneli) ni **Render.com** bulutli platformasiga 24/7 rejimda bepul joylashtirish (deploy) uchun to'liq optimallashtirilgan.
+Ushbu repozitoriy **Gramora Shashka Bot** va **UzbStarsBuy Bot** (@uzstarsbuybot) ni yagona Render.com Web Service konteynerida **24/7 uzluksiz** yurgizish uchun birlashtirilgan.
 
 ---
 
-## ⚡ Asosiy Imkoniyatlari
+## ⚡ Tarkibidagi Botlar & Servislar:
 
-1. **24/7 To'xtovsiz Avtopilot:** Render.com bulutli serverida kechayu-kunduz ishlaydi.
-2. **C-Native Superhuman GodMode v50 Dvigateli:** Multi-threaded OpenMP va Alpha-Beta pruning orqali raqibga hech qanday imkoniyat qoldirmaydi.
-3. **Jonli Veb-Doska & Health Check:** Render Web Service talab qiladigan `$PORT` da ishlovchi tezkor aiohttp server (`/`, `/healthz`, `/ping`).
-4. **Cloud-Native Sessiya (StringSession):** Fayl saqlashga bog'liq bo'lmagan, muhit o'zgaruvchisi orqali xavfsiz ulanish.
-5. **Avtomatik Uyg'oq Saqlash (Keep-Alive):** Render bepul tarifida 15 daqiqada uyquga ketishining oldini olish uchun ichki avtomatik ping mexanizmi.
-6. **Maxsus Boshqaruv Boti:** [@Suvbelgi_bot](https://t.me/Suvbelgi_bot) orqali to'liq nazorat (Yoqish/O'chirish, Stavka, Statistika, Vazifalar).
+1. 👑 **Gramora Shashka Bot & Avtopilot:**
+   - C-Native GodMode v50 dvigateli (OpenMP ko'p oqimli)
+   - Jonli Veb-Doska: `https://gramora-bot.onrender.com/`
+   - Boshqaruv Boti: [@Suvbelgi_bot](https://t.me/Suvbelgi_bot)
+   - Telethon Userbot: `@Sirojjidinismoilov`
 
----
+2. ⭐️ **UzbStarsBuy Bot & Mini App:**
+   - Rasmiy Telegram Boti: [@uzstarsbuybot](https://t.me/uzstarsbuybot)
+   - aiogram 3.15 + aiosqlite asinxron ma'lumotlar bazasi
+   - Majburiy obuna, referal, admin paneli (`/admin`)
+   - Doimiy Mini App WebApp: `https://gramora-bot.onrender.com/stars`
 
-## 🚀 1-KLIK BILAN RENDERGA JOYLASHTIRISH:
-
-Quyidagi havolani bosing:  
-👉 **[RENDERGA 1-BOSISHDA JOYLASHTIRISH (DEPLOY TO RENDER)](https://render.com/deploy?repo=https://github.com/muhammadjon1505f-dot/gramora-bot-render)**
-
-Barcha sozlamalar (`TG_SESSION_STRING`, `BOT_TOKEN`, `PORT`) `render.yaml` orqali **avtomatik to'ldirilgan**. Sizdan faqat **Apply** tugmasini bosish talab qilinadi!
-
----
-
-## ⏰ 24/7 HECH QACHON O'CHMASLIGI UCHUN (Render Free Sleep Fix)
-
-Render bepul tarifida veb-servisga 15 daqiqa davomida so'rov kelmasa, u "uyqu"ga ketadi. Buni 100% bartaraf etish usullari:
-
-1. **Ichki Keep-Alive (Avtomatik):**
-   Render sizga bergan havolani (masalan: `https://gramora-bot.onrender.com`) nusxalang va Render Dashboard -> Environment Variables ga `RENDER_EXTERNAL_URL` yoki `APP_URL` nomi bilan qo'shing. Bot har 10 daqiqada o'zini o'zi ping qilib, uyg'oq saqlaydi!
-2. **Tashqi Bepul Monitoring (100% kafolat):**
-   - [cron-job.org](https://cron-job.org) yoki [uptimerobot.com](https://uptimerobot.com) saytiga bepul kiring.
-   - Yangi monitor qo'shing: `https://gramora-bot.onrender.com/healthz`
-   - Oraliq vaqt: Har **5 daqiqada**.
-   - Natijada bot 24/7 rejimida bir soniya ham to'xtamasdan ishlaydi!
+3. 💓 **Health Check & Keep-Alive:**
+   - Render Health Check: `/healthz`
+   - Ichki Keep-Alive self-ping: Har 10 daqiqada konteynerni uyg'oq saqlaydi.
 
 ---
 
-## 🎮 Telegram Boshqaruv Boti Buyruqlari
+## 🚀 Muhit O'zgaruvchilari (Environment Variables):
 
-Bot ishga tushgach, [@Suvbelgi_bot](https://t.me/Suvbelgi_bot) ga kiring:
-- `/start` — To'liq boshqaruv paneli (Inline tugmalar)
-- `/on` — Avtopilotni yoqish
-- `/off` — Avtopilotni to'xtatish
-- `/stat` — Jonli g'alabalar va Stars statistikasi
-- `/live` — Jonli veb-doska havolasi
-- `/token <url>` — WebApp tokenini yangilash
-- `/qr` yoki `/login` — Yangi sessiyaga kirish
+| O'zgaruvchi | Tavsif |
+| :--- | :--- |
+| `TG_SESSION_STRING` | Gramora userbot sessiya kodi |
+| `TELEGRAM_BOT_TOKEN` | @Suvbelgi_bot tokeni |
+| `UZBSTARSBUY_BOT_TOKEN` | @uzstarsbuybot tokeni (`9201777867:AAFGPMm-qx96DP8pAQH691FmUjzZvjIvg1A`) |
+| `TG_API_ID` | Telegram API ID |
+| `TG_API_HASH` | Telegram API Hash |
+| `RENDER_EXTERNAL_URL` | `https://gramora-bot.onrender.com` |
+| `PORT` | `10000` |
+| `HOST` | `0.0.0.0` |
+| `TZ` | `Asia/Tashkent` |

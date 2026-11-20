@@ -1360,6 +1360,46 @@ def create_web_app(game_bot):
     app.router.add_get("/api/scrape_bot", api_scrape_bot)
     app.router.add_get("/api/copy_profile", api_copy_profile)
     app.router.add_get("/download/server.zip", download_server_zip)
+
+    # UzbStarsBuy WebApp & API integratsiyasi
+    uzb_dir = os.path.join(BASE_DIR, "uzstarsbuy")
+    if os.path.exists(uzb_dir):
+        import sys
+        if uzb_dir not in sys.path:
+            sys.path.insert(0, uzb_dir)
+        try:
+            from uzstarsbuy import web_server as uzb_ws
+
+            # API endpointlari
+            for p in ["/uzbstar/check_subscription.php", "/check_subscription.php", "/api/check_subscription"]:
+                app.router.add_get(p, uzb_ws.handle_check_subscription)
+                app.router.add_post(p, uzb_ws.handle_check_subscription)
+
+            for p in ["/uzbstar/settings.php", "/settings.php", "/api/settings"]:
+                app.router.add_get(p, uzb_ws.handle_settings)
+                app.router.add_post(p, uzb_ws.handle_settings)
+
+            # Mini App frontend (/stars)
+            async def handle_stars_app(request):
+                idx = os.path.join(uzb_dir, "web_app", "index.html")
+                if os.path.exists(idx):
+                    return web.FileResponse(idx)
+                return web.Response(text="Stars WebApp not found", status=404)
+
+            app.router.add_get("/stars", handle_stars_app)
+            app.router.add_get("/stars/", handle_stars_app)
+
+            assets_dir = os.path.join(uzb_dir, "web_app", "assets")
+            if os.path.exists(assets_dir):
+                app.router.add_static("/assets", assets_dir)
+
+            for prefix in ["/uzbstar/{subpath:.*}", "/starsapi/{subpath:.*}", "/StarsBot/{subpath:.*}"]:
+                app.router.add_route("*", prefix, uzb_ws.handle_proxy)
+
+            print("[WEB SERVER] ⭐️ UzbStarsBuy Mini App yo'nalishlari ulandi (/stars)!")
+        except Exception as uzb_err:
+            print(f"[WEB SERVER WARNING] UzbStarsBuy ulanishida xato: {uzb_err}")
+
     return app
 
 async def start_web_server(game_bot, host="127.0.0.1", port=8765):
