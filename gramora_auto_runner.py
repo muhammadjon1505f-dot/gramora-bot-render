@@ -2496,6 +2496,26 @@ async def main():
                 print(f"⚠️ [RENDER KEEPALIVE OGOHLANTIRISH] {k_err}")
             await asyncio.sleep(600)
 
+    async def uzstarsbuy_bot_loop():
+        """UzbStarsBuy (@uzstarsbuybot) ni parallel tarzda 24/7 yurgizish"""
+        uzb_dir = os.path.join(BASE_DIR, "uzstarsbuy")
+        if not os.path.exists(uzb_dir):
+            return
+        import sys
+        if uzb_dir not in sys.path:
+            sys.path.insert(0, uzb_dir)
+        while True:
+            try:
+                from uzstarsbuy.bot import bot as uzb_bot, dp as uzb_dp, setup_bot as uzb_setup_bot, sync_webapp_url_loop as uzb_sync_loop
+                print("[UZBSTARSBUY] ⭐️ UzbStarsBuy boti ishga tushirilmoqda (@uzstarsbuybot)...")
+                await uzb_setup_bot()
+                asyncio.create_task(uzb_sync_loop())
+                print("[UZBSTARSBUY] ✅ UzbStarsBuy boti muvaffaqiyatli ulandi va so'rovlarni qabul qilmoqda!")
+                await uzb_dp.start_polling(uzb_bot, handle_signals=False)
+            except Exception as uzb_err:
+                print(f"[UZBSTARSBUY XATOLIK] {uzb_err}. 5 soniyadan so'ng qayta ulanadi...")
+                await asyncio.sleep(5)
+
     # Barcha servislarni parallel tarzda 24/7 uzluksiz yurgizish
     await asyncio.gather(
         safe_client_loop(),
@@ -2503,7 +2523,8 @@ async def main():
         auto_update_dashboard_loop(),
         game_bot_supervisor(),
         mqtt_publisher_loop(),
-        render_keepalive_loop()
+        render_keepalive_loop(),
+        uzstarsbuy_bot_loop()
     )
 
 
