@@ -30,8 +30,12 @@ import aiohttp
 from aiohttp import web
 from aiohttp.web_middlewares import middleware
 
-import database as db
-import config
+try:
+    import database as db
+    import config
+except ModuleNotFoundError:
+    from uzstarsbuy import database as db
+    from uzstarsbuy import config
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEBAPP_DIR = os.path.join(BASE_DIR, "web_app")

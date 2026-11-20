@@ -43,8 +43,12 @@ from aiogram.types import (
 )
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
-import config
-import database as db
+try:
+    import config
+    import database as db
+except ModuleNotFoundError:
+    from uzstarsbuy import config
+    from uzstarsbuy import database as db
 
 # Logging
 logging.basicConfig(
