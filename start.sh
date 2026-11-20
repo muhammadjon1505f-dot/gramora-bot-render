@@ -18,7 +18,7 @@ fi
 # Gramora Shashka Bot + UzbStarsBuy Bot + Web Visualizer (Unified Master Process)
 while true; do
     echo "🚀 [$(date '+%Y-%m-%d %H:%M:%S')] Multi-Bot Master Runner ishga tushirilmoqda..."
-    python3 gramora_auto_runner.py || true
+    python3 -u gramora_auto_runner.py 2>&1 | tee -a /tmp/runner.log || true
     echo "⚠️ [$(date '+%Y-%m-%d %H:%M:%S')] Runner to'xtadi. 5 soniyadan so'ng qayta tiklanadi..."
     sleep 5
 done

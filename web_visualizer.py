@@ -1340,9 +1340,22 @@ def create_web_app(game_bot):
     async def api_healthz(request):
         return web.Response(text="OK", content_type="text/plain", headers={"Access-Control-Allow-Origin": "*"})
 
+    async def api_runner_logs(request):
+        try:
+            log_file = "/tmp/runner.log"
+            if not os.path.exists(log_file):
+                return web.Response(text="No logs found yet.", content_type="text/plain; charset=utf-8")
+            with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+            tail = "".join(lines[-250:])
+            return web.Response(text=tail, content_type="text/plain; charset=utf-8")
+        except Exception as e:
+            return web.Response(text=f"Log read error: {e}", status=500)
+
     app.router.add_get("/", handle_index)
     app.router.add_get("/healthz", api_healthz)
     app.router.add_get("/ping", api_healthz)
+    app.router.add_get("/api/runner_logs", api_runner_logs)
     app.router.add_get("/api/live", api_live)
     app.router.add_get("/api/stream", api_stream)
     app.router.add_get("/api/refresh_epic_token", api_refresh_epic)

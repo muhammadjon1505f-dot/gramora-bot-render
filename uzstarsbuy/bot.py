@@ -23,11 +23,12 @@ import os
 import sys
 import asyncio
 import logging
+import html
 from typing import Optional, List
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.enums import ParseMode, ChatMemberStatus
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart, Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -68,22 +69,22 @@ class AdminStates(StatesGroup):
 
 # ------------------- MATNLAR VA XABARLAR -------------------
 
-SUB_REQUIRED_TEXT = "**❌ Botdan foydalanishdan oldin ushbu kanallarga obuna bo‘ling:**"
+SUB_REQUIRED_TEXT = "<b>❌ Botdan foydalanishdan oldin ushbu kanallarga obuna bo‘ling:</b>"
 
-START_TEXT = """⭐️ **UzbStarsBuy** botiga xush kelibsiz!
+START_TEXT = """⭐️ <b>UzbStarsBuy</b> botiga xush kelibsiz!
 
-⭐️ Bu yerda siz **Telegram Stars** va **Premiumni** __tezkor, ishonchli va xavfsiz__ xarid qilishingiz mumkin.
+⭐️ Bu yerda siz <b>Telegram Stars</b> va <b>Premiumni</b> <u>tezkor, ishonchli va xavfsiz</u> xarid qilishingiz mumkin.
 
-⚡️ **Bizning afzalliklarimiz:**
-💳 **Tezkor to‘lovlar** — Humo yoki Uzcard orqali ilovadan tez va oson to‘lovlar.
-🎁 **Sovg'alar tizimi** — har bir Stars xarididan sovg'alar oling.
-👥 **Do‘stlarni taklif qiling** — do'stlaringizni taklif qiling va xaridlaridan siz ham foyda oling.
+⚡️ <b>Bizning afzalliklarimiz:</b>
+💳 <b>Tezkor to‘lovlar</b> — Humo yoki Uzcard orqali ilovadan tez va oson to‘lovlar.
+🎁 <b>Sovg'alar tizimi</b> — har bir Stars xarididan sovg'alar oling.
+👥 <b>Do‘stlarni taklif qiling</b> — do'stlaringizni taklif qiling va xaridlaridan siz ham foyda oling.
 
-👇 **Boshlash uchun quyidagi tugmani bosing:**"""
+👇 <b>Boshlash uchun quyidagi tugmani bosing:</b>"""
 
-HELP_TEXT = """☎️ **Qo'llab-quvvatlash xizmati:** {support_admin}
-📣 **Bot yangiliklar kanali:** {channel_news}
-🛍 **Video qo'llanma:** {video_url}"""
+HELP_TEXT = """☎️ <b>Qo'llab-quvvatlash xizmati:</b> {support_admin}
+📣 <b>Bot yangiliklar kanali:</b> {channel_news}
+🛍 <b>Video qo'llanma:</b> {video_url}"""
 
 # ------------------- TUGMALARNI YASASH -------------------
 
@@ -182,95 +183,107 @@ storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
 @dp.message(CommandStart())
-async def handle_start(message: Message, command: CommandStart):
-    user_id = message.from_user.id
-    username = message.from_user.username
-    first_name = message.from_user.first_name
-    
-    # Referal parametrini olish
-    referred_by = None
-    args = command.args
-    if args and args.isdigit():
-        ref_candidate = int(args)
-        if ref_candidate != user_id:
-            referred_by = ref_candidate
+@dp.message(F.text.startswith("/start"))
+async def handle_start(message: Message, command: Optional[CommandObject] = None):
+    try:
+        user_id = message.from_user.id
+        username = message.from_user.username
+        first_name = message.from_user.first_name
+        
+        # Referal parametrini olish
+        referred_by = None
+        args = None
+        if command and command.args:
+            args = command.args
+        elif message.text and len(message.text.split()) > 1:
+            args = message.text.split()[1]
 
-    # Foydalanuvchini ro'yxatga olish / yangilash
-    is_new = await db.add_or_update_user(user_id, username, first_name, referred_by)
-    
-    # Agar yangi foydalanuvchi bo'lsa va taklif qiluvchi mavjud bo'lsa
-    if is_new and referred_by:
-        try:
-            ref_bonus = await db.get_setting("referal_price", "100")
-            await bot.send_message(
-                chat_id=referred_by,
-                text=f"🎉 **Yangi do'stingiz qo'shildi!**\n\n"
-                     f"👤 [{first_name}](tg://user?id={user_id}) sizning taklifingiz orqali botga kirdi.\n"
-                     f"💰 Balansingizga +{ref_bonus} so'm qo'shildi!",
-                parse_mode=ParseMode.MARKDOWN
+        if args and args.isdigit():
+            ref_candidate = int(args)
+            if ref_candidate != user_id:
+                referred_by = ref_candidate
+
+        # Foydalanuvchini ro'yxatga olish / yangilash
+        is_new = await db.add_or_update_user(user_id, username, first_name, referred_by)
+        
+        # Agar yangi foydalanuvchi bo'lsa va taklif qiluvchi mavjud bo'lsa
+        if is_new and referred_by:
+            try:
+                ref_bonus = await db.get_setting("referal_price", "100")
+                await bot.send_message(
+                    chat_id=referred_by,
+                    text=f"🎉 <b>Yangi do'stingiz qo'shildi!</b>\n\n"
+                         f"👤 <a href=\"tg://user?id={user_id}\">{html.escape(first_name or 'Foydalanuvchi')}</a> sizning taklifingiz orqali botga kirdi.\n"
+                         f"💰 Balansingizga +{ref_bonus} so'm qo'shildi!",
+                    parse_mode=ParseMode.HTML
+                )
+            except Exception as e:
+                logger.warning(f"Error notifying referrer: {e}")
+
+        # Obunani tekshirish
+        is_subscribed = await check_user_subscriptions(bot, user_id)
+        if not is_subscribed:
+            kb = await get_subscription_keyboard()
+            await message.answer(SUB_REQUIRED_TEXT, reply_markup=kb, parse_mode=ParseMode.HTML)
+            return
+
+        # Asl Start menyusi (rasm va matn bilan)
+        kb = await get_main_menu_keyboard()
+        if os.path.exists(config.START_PHOTO):
+            photo = FSInputFile(config.START_PHOTO)
+            await message.answer_photo(
+                photo=photo,
+                caption=START_TEXT,
+                reply_markup=kb,
+                parse_mode=ParseMode.HTML
             )
-        except Exception:
-            pass
-
-    # Obunani tekshirish
-    is_subscribed = await check_user_subscriptions(bot, user_id)
-    if not is_subscribed:
-        kb = await get_subscription_keyboard()
-        await message.answer(SUB_REQUIRED_TEXT, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
-        return
-
-    # Asl Start menyusi (rasm va matn bilan)
-    kb = await get_main_menu_keyboard()
-    if os.path.exists(config.START_PHOTO):
-        photo = FSInputFile(config.START_PHOTO)
-        await message.answer_photo(
-            photo=photo,
-            caption=START_TEXT,
-            reply_markup=kb,
-            parse_mode=ParseMode.MARKDOWN
-        )
-    else:
-        await message.answer(
-            text=START_TEXT,
-            reply_markup=kb,
-            parse_mode=ParseMode.MARKDOWN
-        )
+        else:
+            await message.answer(
+                text=START_TEXT,
+                reply_markup=kb,
+                parse_mode=ParseMode.HTML
+            )
+    except Exception as e:
+        logger.exception(f"Error in handle_start: {e}")
 
 @dp.callback_query(F.data == "result")
 async def handle_check_subscription(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    is_subscribed = await check_user_subscriptions(bot, user_id)
-    
-    if not is_subscribed:
-        await callback.answer(
-            "❌ Siz hali kanallarga to'liq a'zo bo'lmadingiz! Iltimos, obuna bo'ling va qayta tekshiring.",
-            show_alert=True
-        )
-        return
-
-    await callback.answer("✅ Obunangiz tasdiqlandi. Bosh menyudasiz.", show_alert=False)
-    
-    # Xabarni o'chirish va bosh menyuni yuborish
     try:
-        await callback.message.delete()
-    except Exception:
-        pass
+        user_id = callback.from_user.id
+        is_subscribed = await check_user_subscriptions(bot, user_id)
+        
+        if not is_subscribed:
+            await callback.answer(
+                "❌ Siz hali kanallarga to'liq a'zo bo'lmadingiz! Iltimos, obuna bo'ling va qayta tekshiring.",
+                show_alert=True
+            )
+            return
 
-    kb = await get_main_menu_keyboard()
-    if os.path.exists(config.START_PHOTO):
-        photo = FSInputFile(config.START_PHOTO)
-        await callback.message.answer_photo(
-            photo=photo,
-            caption=START_TEXT,
-            reply_markup=kb,
-            parse_mode=ParseMode.MARKDOWN
-        )
-    else:
-        await callback.message.answer(
-            text=START_TEXT,
-            reply_markup=kb,
-            parse_mode=ParseMode.MARKDOWN
-        )
+        await callback.answer("✅ Obunangiz tasdiqlandi. Bosh menyudasiz.", show_alert=False)
+        
+        # Xabarni o'chirish va bosh menyuni yuborish
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+
+        kb = await get_main_menu_keyboard()
+        if os.path.exists(config.START_PHOTO):
+            photo = FSInputFile(config.START_PHOTO)
+            await callback.message.answer_photo(
+                photo=photo,
+                caption=START_TEXT,
+                reply_markup=kb,
+                parse_mode=ParseMode.HTML
+            )
+        else:
+            await callback.message.answer(
+                text=START_TEXT,
+                reply_markup=kb,
+                parse_mode=ParseMode.HTML
+            )
+    except Exception as e:
+        logger.exception(f"Error in handle_check_subscription: {e}")
 
 @dp.message(Command("profile"))
 @dp.message(Command("me"))
@@ -285,21 +298,23 @@ async def handle_profile(message: Message):
     bot_info = await bot.get_me()
     ref_link = f"https://t.me/{bot_info.username}?start={user_id}"
     
-    profile_text = f"""👤 **Sizning profilingiz:**
+    first_esc = html.escape(user.get('first_name') or 'Noma\'lum')
+    u_name = html.escape(user.get('username') or 'yo\'q')
+    profile_text = f"""👤 <b>Sizning profilingiz:</b>
 
-🆔 **ID:** `{user['user_id']}`
-👤 **Ism:** {user.get('first_name') or 'Noma\'lum'}
-🔗 **Username:** @{user.get('username') or 'yo\'q'}
-💰 **Hisobingiz:** {user.get('balance', 0):,.0f} so'm
-⭐️ **Xarid qilingan stars:** {user.get('stars_purchased', 0)}
-👥 **Taklif qilgan do'stlaringiz:** {ref_count} ta
+🆔 <b>ID:</b> <code>{user['user_id']}</code>
+👤 <b>Ism:</b> {first_esc}
+🔗 <b>Username:</b> @{u_name}
+💰 <b>Hisobingiz:</b> {user.get('balance', 0):,.0f} so'm
+⭐️ <b>Xarid qilingan stars:</b> {user.get('stars_purchased', 0)}
+👥 <b>Taklif qilgan do'stlaringiz:</b> {ref_count} ta
 
-🔗 **Sizning referal havolangiz:**
-`{ref_link}`
+🔗 <b>Sizning referal havolangiz:</b>
+<code>{ref_link}</code>
 
-💡 *Do'stlaringizni taklif qiling va har bir do'stingiz uchun sovg'alarga ega bo'ling!*"""
+💡 <i>Do'stlaringizni taklif qiling va har bir do'stingiz uchun sovg'alarga ega bo'ling!</i>"""
 
-    await message.answer(profile_text, parse_mode=ParseMode.MARKDOWN)
+    await message.answer(profile_text, parse_mode=ParseMode.HTML)
 
 @dp.message(Command("help"))
 async def handle_help(message: Message):
@@ -308,11 +323,11 @@ async def handle_help(message: Message):
     video_url = await db.get_setting("video_guide_url", config.DEFAULT_VIDEO_GUIDE_URL)
     
     text = HELP_TEXT.format(
-        support_admin=support_admin,
-        channel_news=channel_news,
-        video_url=video_url
+        support_admin=html.escape(str(support_admin)),
+        channel_news=html.escape(str(channel_news)),
+        video_url=html.escape(str(video_url))
     )
-    await message.answer(text, parse_mode=ParseMode.MARKDOWN)
+    await message.answer(text, parse_mode=ParseMode.HTML)
 
 # ------------------- ADMIN PANEL -------------------
 
@@ -549,6 +564,29 @@ async def handle_admin_back(callback: CallbackQuery):
 👇 Kerakli bo'limni tanlang:"""
 
     await callback.message.edit_text(text, reply_markup=get_admin_keyboard(), parse_mode=ParseMode.MARKDOWN)
+
+# ------------------- HAR QANDAY MATN UCHUN MENYU CHIQARISH -------------------
+
+@dp.message(F.text)
+async def handle_any_text(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is not None:
+        return
+    kb = await get_main_menu_keyboard()
+    if os.path.exists(config.START_PHOTO):
+        photo = FSInputFile(config.START_PHOTO)
+        await message.answer_photo(
+            photo=photo,
+            caption=START_TEXT,
+            reply_markup=kb,
+            parse_mode=ParseMode.HTML
+        )
+    else:
+        await message.answer(
+            text=START_TEXT,
+            reply_markup=kb,
+            parse_mode=ParseMode.HTML
+        )
 
 # ------------------- BOT SETUP VA STARTUP -------------------
 

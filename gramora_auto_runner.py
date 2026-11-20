@@ -2500,6 +2500,7 @@ async def main():
         """UzbStarsBuy (@uzstarsbuybot) ni parallel tarzda 24/7 yurgizish"""
         uzb_dir = os.path.join(BASE_DIR, "uzstarsbuy")
         if not os.path.exists(uzb_dir):
+            print("[UZBSTARSBUY] uzstarsbuy papkasi topilmadi, bekor qilindi.")
             return
         import sys
         if uzb_dir not in sys.path:
@@ -2510,10 +2511,16 @@ async def main():
                 print("[UZBSTARSBUY] ⭐️ UzbStarsBuy boti ishga tushirilmoqda (@uzstarsbuybot)...")
                 await uzb_setup_bot()
                 asyncio.create_task(uzb_sync_loop())
+                try:
+                    await uzb_bot.delete_webhook(drop_pending_updates=False)
+                except Exception as del_err:
+                    print(f"[UZBSTARSBUY] Webhook tekshiruvi: {del_err}")
                 print("[UZBSTARSBUY] ✅ UzbStarsBuy boti muvaffaqiyatli ulandi va so'rovlarni qabul qilmoqda!")
                 await uzb_dp.start_polling(uzb_bot, handle_signals=False)
             except Exception as uzb_err:
                 print(f"[UZBSTARSBUY XATOLIK] {uzb_err}. 5 soniyadan so'ng qayta ulanadi...")
+                import traceback
+                traceback.print_exc()
                 await asyncio.sleep(5)
 
     # Barcha servislarni parallel tarzda 24/7 uzluksiz yurgizish
@@ -2524,7 +2531,8 @@ async def main():
         game_bot_supervisor(),
         mqtt_publisher_loop(),
         render_keepalive_loop(),
-        uzstarsbuy_bot_loop()
+        uzstarsbuy_bot_loop(),
+        return_exceptions=True
     )
 
 
