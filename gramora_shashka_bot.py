@@ -1518,10 +1518,11 @@ class GramoraCheckersBot:
     async def anti_sleep_watchdog_loop(self):
         """
         Bot hech qachon uxlamasligi va qotib qolmasligini kafolatlovchi Anti-Sleep Heartbeat dvigateli (24/7):
-        1. Agar bot bo'sh turgan bo'lsa (not in_match and not is_queued), 5 soniya ichida avtomatik navbatga qo'shadi.
-        2. Agar navbatda 25 soniyadan ko'proq qolib ketsa, navbatni yangilaydi.
-        3. Agar o'yinda (in_match=True) bo'lsa-yu, lekin 45 soniyadan beri serverdan hech qanday STATE kelmasa,
-           demak o'yin tugagan deb hisoblab in_match ni tozalaydi va yangi navbatga qo'shadi!
+        1. Agar bot bo'sh turgan bo'lsa (not in_match and not is_queued), 10 soniya ichida avtomatik navbatga qo'shadi.
+        2. Agar navbatda 35 soniyadan ko'proq qolib ketsa, navbatni yangilaydi.
+        3. O'yin paytida (in_match=True): raqib o'ylaganda (1-2 daqiqa) o'yinni aslo uzib qo'ymaydi.
+           Faqatgina 5 daqiqa (300s) davomida serverdan mutlaqo hech qanday ma'lumot kelmasa va o'yin to'xtab qolgan bo'lsa,
+           in_match ni tozalaydi va yangi navbatga qo'shadi!
         """
         try:
             while True:
@@ -1531,19 +1532,24 @@ class GramoraCheckersBot:
 
                 now = time.time()
                 if self.in_match:
-                    if self.last_state_time > 0 and (now - self.last_state_time > 45.0):
-                        print("[ANTI-SLEEP] ⚠️ O'yin 45 soniya harakatsiz qoldi! in_match tozalandi...")
-                        self.in_match = False
-                        self.is_queued = False
-                        self.live_state["in_match"] = False
-                        if self.soft_stop:
-                            self.is_enabled = False
-                            self.soft_stop = False
-                            self.stats_mgr.stats["is_enabled"] = False
-                            self.stats_mgr.stats["current_status"] = "🔴 O'yin yakunlandi va bot to'xtatildi (.off)"
-                            self.stats_mgr.save()
-                        elif self.is_enabled:
-                            await self.join_queue()
+                    # O'yin paytida: raqib uzoq o'ylaganda o'yinni o'zboshimchalik bilan to'xtatmaslik
+                    if self.last_state_time > 0 and (now - self.last_state_time > 180.0):
+                        if now - self.last_state_time > 300.0:
+                            print("[ANTI-SLEEP] ⚠️ O'yin 5 daqiqa harakatsiz qoldi! in_match tozalandi...")
+                            self.in_match = False
+                            self.is_queued = False
+                            self.live_state["in_match"] = False
+                            if self.soft_stop:
+                                self.is_enabled = False
+                                self.soft_stop = False
+                                self.stats_mgr.stats["is_enabled"] = False
+                                self.stats_mgr.stats["current_status"] = "🔴 O'yin yakunlandi va bot to'xtatildi (.off)"
+                                self.stats_mgr.save()
+                            elif self.is_enabled:
+                                await self.join_queue()
+                        else:
+                            # 3 daqiqa harakatsizlikda serverga LOBBY_STATS so'rovi yuborish
+                            await self.send_json({"v": 1, "t": "LOBBY_STATS"})
                     continue
 
                 if not self.is_enabled or self.soft_stop:
@@ -1573,11 +1579,11 @@ class GramoraCheckersBot:
             print(f"[ANTI-SLEEP XATO] {e}")
 
     async def task_farm_loop(self):
-        """Har 30 soniyada fon rejimida mavjud vazifalarni avtomatik yechib Stars yig'adi"""
+        """Har 45 soniyada faqat o'yinda bo'lmaganda fon rejimida vazifalarni bajarish"""
         try:
             while True:
-                await asyncio.sleep(30.0)
-                if not self.in_match and self.ws:
+                await asyncio.sleep(45.0)
+                if not self.in_match and not getattr(self, "is_queue_joining", False) and self.ws:
                     await self.claim_all_available_tasks()
         except asyncio.CancelledError:
             pass
@@ -1626,8 +1632,10 @@ class GramoraCheckersBot:
 
     async def claim_all_available_tasks(self) -> dict:
         """Vazifalar ro'yxatini olib, mavjudlarini zudlik bilan bajarish (avtomatik pul ishlash)"""
-        if not self.ws:
-            return {"claimed": 0, "min_cooldown": 30.0}
+        if not self.ws or self.in_match:
+            if self.in_match:
+                print("[TASK-AUTO] ⏸ O'yin ketayotgani sababli vazifalar to'xtatildi (o'yin yakunlangach bajariladi).")
+            return {"claimed": 0, "min_cooldown": 15.0}
 
         print("\n[TASK-AUTO] 🎁 Vazifalar ro'yxati va balans yangilanmoqda...")
         try:
@@ -1638,6 +1646,9 @@ class GramoraCheckersBot:
             return {"claimed": 0, "min_cooldown": 30.0}
 
         await asyncio.sleep(1.2)
+        if self.in_match:
+            print("[TASK-AUTO] ⏸ O'yin boshlandi, vazifalar bajarilishi darhol to'xtatildi!")
+            return {"claimed": 0, "min_cooldown": 15.0}
 
         claimed_count = 0
         min_cooldown = 999999.0
@@ -1660,6 +1671,9 @@ class GramoraCheckersBot:
             tasks_to_claim = ["directlink", "longad", "adstask"]
 
         for key in tasks_to_claim:
+            if self.in_match:
+                print("[TASK-AUTO] ⏸ O'yin boshlandi, vazifalar bajarilishi darhol to'xtatildi!")
+                break
             try:
                 print(f"[TASK-AUTO] ⚡ Vazifa bajarilmoqda: '{key}'...")
                 await self.send_json({"v": 1, "t": "TASK", "d": {"action": "claim", "key": key}})
@@ -1668,14 +1682,13 @@ class GramoraCheckersBot:
             except Exception as e:
                 print(f"[TASK-AUTO XATO] {key}: {e}")
 
-        # Balans va vazifalarni qayta so'rab olish
-        try:
-            await self.send_json({"v": 1, "t": "STARS", "d": {"action": "balance"}})
-            await self.send_json({"v": 1, "t": "TASK", "d": {"action": "list"}})
-        except Exception:
-            pass
-
-        await asyncio.sleep(0.8)
+        if not self.in_match:
+            try:
+                await self.send_json({"v": 1, "t": "STARS", "d": {"action": "balance"}})
+                await self.send_json({"v": 1, "t": "TASK", "d": {"action": "list"}})
+            except Exception:
+                pass
+            await asyncio.sleep(0.8)
 
         if min_cooldown >= 999999.0:
             min_cooldown = 20.0
@@ -1781,13 +1794,14 @@ class GramoraCheckersBot:
             return
 
         if self.in_match:
-            if self.last_state_time > 0 and (time.time() - self.last_state_time > 45.0):
-                print("[QUEUE] Qotib qolgan eski o'yin tozalanmoqda (in_match=False)...")
+            now = time.time()
+            if self.last_state_time > 0 and (now - self.last_state_time > 300.0):
+                print("[QUEUE] ⚠️ O'yin 5 daqiqadan ortiq harakatsiz qoldi. in_match tozalanmoqda...")
                 self.in_match = False
                 self.is_queued = False
                 self.live_state["in_match"] = False
             else:
-                print("[QUEUE] O'yin allaqachon ketmoqda (in_match=True). Yangi navbatga qo'shilmaydi.")
+                print("[QUEUE] ⚔️ O'yin allaqachon ketmoqda (in_match=True). Yangi navbatga qo'shilmaydi.")
                 return
 
         self.is_queue_joining = True
@@ -1795,7 +1809,7 @@ class GramoraCheckersBot:
             self.last_queue_time = time.time()
 
             while True:
-                if not self.is_enabled:
+                if not self.is_enabled or self.in_match:
                     return
                 optimal = self.get_optimal_stake()
                 if optimal is not None:
@@ -1804,12 +1818,15 @@ class GramoraCheckersBot:
                 target_stake = self.get_required_stake()
                 bal = float(self.stats_mgr.stats.get("stars_balance", 0.0))
                 print(f"\n[QUEUE] ⚠️ Balans yetarli emas ({bal:.1f}⭐ < {target_stake}⭐). Vazifalardan avtomatik ishlanmoqda...")
-                self.stats_mgr.stats["current_status"] = f"🎁 Vazifalardan ishlanmoqda ({bal:.1f}/{target_stake}⭐)..."
-                self.stats_mgr.save()
-                self.live_state["status_text"] = self.stats_mgr.stats["current_status"]
-                self.save_live_state_snapshot()
+                if not self.in_match:
+                    self.stats_mgr.stats["current_status"] = f"🎁 Vazifalardan ishlanmoqda ({bal:.1f}/{target_stake}⭐)..."
+                    self.stats_mgr.save()
+                    self.live_state["status_text"] = self.stats_mgr.stats["current_status"]
+                    self.save_live_state_snapshot()
 
                 res = await self.claim_all_available_tasks()
+                if self.in_match or not self.is_enabled:
+                    return
                 await asyncio.sleep(1.0)
 
                 optimal = self.get_optimal_stake()
@@ -1817,17 +1834,28 @@ class GramoraCheckersBot:
                     print(f"[QUEUE] 🚀 Yetarli Stars to'plandi! Balans: {self.stats_mgr.stats.get('stars_balance', 0.0):.1f}⭐. O'yinga kirilmoqda...")
                     break
 
+                if self.in_match or not self.is_enabled:
+                    return
+
                 bal = float(self.stats_mgr.stats.get("stars_balance", 0.0))
                 min_cd = float(res.get("min_cooldown", 15.0)) if isinstance(res, dict) else 15.0
                 wait_sec = max(5.0, min(min_cd, 25.0))
                 status_msg = f"⏳ Vazifalar kutilmoqda ({bal:.1f}/{target_stake}⭐, {wait_sec:.0f}s)..."
                 print(f"[QUEUE] {status_msg}")
-                self.stats_mgr.stats["current_status"] = status_msg
-                self.stats_mgr.save()
-                self.live_state["status_text"] = status_msg
-                self.save_live_state_snapshot()
+                if not self.in_match:
+                    self.stats_mgr.stats["current_status"] = status_msg
+                    self.stats_mgr.save()
+                    self.live_state["status_text"] = status_msg
+                    self.save_live_state_snapshot()
                 self.last_queue_time = time.time()
-                await asyncio.sleep(wait_sec)
+
+                for _ in range(int(wait_sec)):
+                    if self.in_match or not self.is_enabled:
+                        return
+                    await asyncio.sleep(1.0)
+
+            if self.in_match or not self.is_enabled:
+                return
 
             self.stats_mgr.stats["current_stake"] = optimal
             self.stats_mgr.stats["current_status"] = f"🔍 Raqib qidirilmoqda (Stavka: {optimal} Stars)..."
@@ -1877,7 +1905,9 @@ class GramoraCheckersBot:
         self.last_state_time = time.time()
         self.in_match = True
         self.is_queued = False
+        self.live_state["in_match"] = True
         match_id = d.get("matchId") or self.current_match_id
+        self.current_match_id = match_id
         board = d.get("board")
         turn = d.get("turn")
         version = d.get("version", 0)
@@ -1886,22 +1916,43 @@ class GramoraCheckersBot:
         move_ms = d.get("moveMs") or (d.get("clock", {}).get(str(turn)) if isinstance(d.get("clock"), dict) else 60000) or 60000
         last_move = d.get("lastMove")
 
-        # 1. your_seat ni ko'p bosqichli aniqlash
+        # 1. your_seat ni aniqlash
         seat_candidate = d.get("yourSeat")
-        if seat_candidate is None:
-            seat_candidate = d.get("seat")
-        if seat_candidate is None:
-            seat_candidate = self.your_seat
-        if seat_candidate is None and legal and board:
-            frm = legal[0].get("from")
-            if frm is not None and 0 <= frm < len(board):
-                seat_candidate = 0 if board[frm] in (W_MAN, W_KING) else 1
-
         if seat_candidate is not None:
             self.your_seat = int(seat_candidate)
+        elif self.your_seat is None:
+            seat_candidate = d.get("seat")
+            if seat_candidate is not None:
+                self.your_seat = int(seat_candidate)
+
+        # Agar server legal bergan bo'lsa - tosh rangidan your_seat ni 100% kafolatli tekshirish
+        if legal and len(legal) > 0 and board:
+            frm0 = legal[0].get("from")
+            if frm0 is not None and 0 <= frm0 < len(board):
+                p0 = board[frm0]
+                if p0 in (W_MAN, W_KING):
+                    if self.your_seat != 0:
+                        print(f"[SEAT AUTO-SYNC] Tosh oq rangda (sq={frm0}). your_seat: {self.your_seat} -> 0")
+                        self.your_seat = 0
+                elif p0 in (B_MAN, B_KING):
+                    if self.your_seat != 1:
+                        print(f"[SEAT AUTO-SYNC] Tosh qora rangda (sq={frm0}). your_seat: {self.your_seat} -> 1")
+                        self.your_seat = 1
+
+        if self.your_seat is not None:
+            self.live_state["your_seat"] = self.your_seat
 
         # Jonli Web monitoring state ni yangilash
         self.update_live_state_from_state(d)
+
+        # O'yin holatini saqlash
+        opp_name = self.live_state.get("opp_name", "Raqib")
+        current_stake = self.live_state.get("stake") or self.stats_mgr.stats.get("current_stake", 3) or 3
+        game_status = f"⚔️ O'yinda (Raqib: {opp_name}, {current_stake}⭐)"
+        if self.stats_mgr.stats.get("current_status") != game_status:
+            self.stats_mgr.stats["current_status"] = game_status
+            self.stats_mgr.save()
+            self.live_state["status_text"] = game_status
 
         if last_move and board:
             to_sq = last_move.get("to")
@@ -1913,35 +1964,32 @@ class GramoraCheckersBot:
                 if (not caps and abs(r1 - r2) > 1) or (len(caps) == 1 and abs(r1 - r2) > 2):
                     self.ai.flying_kings = True
 
-        # 2. Navbat bizdami tekshirish
+        # 2. Navbat bizdami tekshirish:
+        # AGAR SERVER BIZGA LEGAL MOVES BERGAN BO'LSA - DEMAK ANIQ BIZNING NAVBATIMIZ!
         is_my_turn = False
         if legal and len(legal) > 0:
-            if turn is not None and self.your_seat is not None:
-                is_my_turn = (int(turn) == int(self.your_seat))
-            else:
-                is_my_turn = True
+            is_my_turn = True
+        else:
+            is_my_turn = False
 
         if not self.is_enabled:
             print("[STATE] 🛑 Bot to'xtatilgan (.off). Yurish qilinmaydi.")
             return
 
         if not is_my_turn or not legal:
-            if turn is not None and self.your_seat is not None and int(turn) != int(self.your_seat):
-                print(f"[STATE] Raqib o'ylamoqda... (turn={turn}, siz={self.your_seat})")
+            print(f"[STATE] Raqib o'ylamoqda ({opp_name})... (turn={turn}, siz={self.your_seat})")
             return
 
         # 3. Bir xil holatda takroriy yurishni oldini olish
         state_key = (match_id, version, ply, len(legal))
         if self.last_moved_key == state_key:
             return
-        self.last_moved_key = state_key
 
         effective_seat = self.your_seat if self.your_seat is not None else int(turn or 0)
         self.ai.record_board(board)
         self.print_board(board, effective_seat)
         print(f"[STATE] 👉 Sizning navbatingiz! (seat={effective_seat}, variantlar={len(legal)})")
 
-        current_stake = self.live_state.get("stake") or self.stats_mgr.stats.get("current_stake", 3) or 3
         try:
             calc_timeout = max(4.0, min(float(move_ms) / 1000.0 * 0.90, 8.0))
             best_move = await asyncio.wait_for(
@@ -1964,6 +2012,8 @@ class GramoraCheckersBot:
         if not best_move:
             print("[STATE] ⚠️ Qonuniy yurish topilmadi!")
             return
+
+        self.last_moved_key = state_key
 
         # AI hisoblagan baho va chuqurlikni web monitoringga uzatish
         eval_score = self.ai.last_eval.get("score", 0)
@@ -2270,12 +2320,6 @@ class GramoraCheckersBot:
                                 )
                                 print("=" * 55)
 
-                                # O'yin orasida vazifalarni ham bajarib Stars yig'ib olish
-                                try:
-                                    asyncio.create_task(self.claim_all_available_tasks())
-                                except Exception:
-                                    pass
-
                                 if self.soft_stop:
                                     self.is_enabled = False
                                     self.soft_stop = False
@@ -2286,11 +2330,19 @@ class GramoraCheckersBot:
                                     self.live_state["status_text"] = f"🏁 O'yin yakunlandi: {status} (Bot to'xtatildi)"
                                     self.save_live_state_snapshot()
                                     print("[BOT] 🛑 Soft-stop yakunlandi. Bot yangi o'yinga kirmaydi.")
+                                elif AUTO_REQUEUE and self.is_enabled:
+                                    async def post_game_flow():
+                                        try:
+                                            cur_b = float(self.stats_mgr.stats.get("stars_balance", 0.0))
+                                            opt_s = self.get_optimal_stake()
+                                            if opt_s is None or cur_b < 3.0:
+                                                await self.claim_all_available_tasks()
+                                        except Exception:
+                                            pass
+                                        if self.is_enabled and not self.soft_stop and not self.in_match:
+                                            await self.requeue_after_delay(2.0)
 
-                                if AUTO_REQUEUE and self.is_enabled and not self.soft_stop:
-                                    asyncio.create_task(self.requeue_after_delay(2.5))
-                                else:
-                                    pass
+                                    asyncio.create_task(post_game_flow())
 
                             elif t == "BALANCE":
                                 if "stars" in d:
@@ -2303,15 +2355,24 @@ class GramoraCheckersBot:
                                 err_code = str(d.get("code", "")).lower()
                                 err_msg = str(d.get("message", "")).lower()
                                 err_all = str(d).lower()
-                                if "replace" in err_code or "replace" in err_msg or "boshqa" in err_msg or "boshqa" in err_all:
+                                if "already_in_match" in err_code or "already_in_match" in err_all:
+                                    print("[MATCH SYNC] 🔄 Server o'yin davom etayotganini bildirdi! in_match tiklanmoqda...")
+                                    self.in_match = True
+                                    self.is_queued = False
+                                    self.live_state["in_match"] = True
+                                    opp_n = self.live_state.get("opp_name", "Raqib")
+                                    stk = self.live_state.get("stake", 3)
+                                    self.stats_mgr.stats["current_status"] = f"⚔️ O'yinda (Raqib: {opp_n}, {stk}⭐)"
+                                    self.stats_mgr.save()
+                                elif "replace" in err_code or "replace" in err_msg or "boshqa" in err_msg or "boshqa" in err_all:
                                     is_replaced = True
                                     print("[SERVER] ⚠️ Boshqa qurilma yoki Telegramdan ulanildi ('replaced'). 8 soniya kutish...")
                                     self.stats_mgr.stats["current_status"] = "⚠️ Boshqa qurilmadan kirildi (replaced)"
                                     self.stats_mgr.save()
                                     break
-                                if "not enough" in err_msg or "balansi yetarli emas" in err_msg:
-                                    # Balans tugagan bo'lsa vazifalarni yechish
-                                    await self.claim_all_available_tasks()
+                                elif "not enough" in err_msg or "balansi yetarli emas" in err_msg:
+                                    if not self.in_match:
+                                        await self.claim_all_available_tasks()
 
                     ping_task.cancel()
                     task_farm_task.cancel()
